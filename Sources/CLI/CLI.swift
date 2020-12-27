@@ -206,7 +206,7 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     }
     
     /// A short description of the commands syntax
-    private var synopsis: String {
+    internal var synopsis: String {
         let optionsShort = self.options.map { $0.identifiers.first!.suffix($0.identifiers.first!.count - 1) }.joined()
         let subcommandsShort = self.subcommands.isEmpty ? "" : "[\(self.subcommands.map { $0.names.first! }.joined(separator: " "))]"
         

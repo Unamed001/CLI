@@ -3,6 +3,93 @@ import XCTest
 
 final class CLITests: XCTestCase {
     
+    func test_command_core() {
+        
+        let command = Command("test", "test-command", description: "A test command")
+        command.add(
+            .init("-v", "--verbose", helpText: "help(verbose)"),
+            .init("-u", "--unsafe", helpText: "help(unsafe)"),
+            .init("cache", [ "-c", "--cache" ], InputType.path, isFlag: false, isRequired: false, defaultValue: "", helpText: "help(cache)")
+        )
+        
+        command.set("files", InputType.sequence(InputType.path))
+        
+        XCTAssertEqual(command.completeName, "test")
+        XCTAssertEqual(command.synopsis, "test [-hvuc] <files: path...>")
+        XCTAssertEqual(command.names, [ "test", "test-command" ])
+        
+        command.eval([ "-c", "./.cache", "--verbose" ]) { (args, error) in
+            XCTAssertNil(error)
+            
+            XCTAssertEqual(args["verbose"] as? Bool, true)
+            XCTAssertEqual(args["unsafe"] as? Bool, false)
+            XCTAssertEqual(args["cache"] as? String, "./.cache")
+        }
+        
+        command.eval([ ]) { (args, error) in
+            XCTAssertNil(error)
+            
+            XCTAssertEqual(args["verbose"] as? Bool, false)
+            XCTAssertEqual(args["unsafe"] as? Bool, false)
+            XCTAssertEqual(args["cache"] as? String, "")
+        }
+    }
+    
+    func test_command_subcommands() {
+        
+        let parent = Command("parent")
+        parent.add(
+            .init("-p", "--parent", helpText: "help(parent)")
+        )
+        
+        let child1 = Command("child1", parent: parent)
+        child1.add(
+            .init("-c1", "--child1", helpText: "help(child1)")
+        )
+        child1.set("files", InputType.sequence(InputType.path))
+        
+        let child2 = Command("child2", parent: parent)
+        child2.add(
+            .init("cache", [ "-c" ], InputType.path, isFlag: false, isRequired: false, defaultValue: "./.cache", helpText: "help(cache)")
+        )
+        
+        XCTAssertEqual(parent.synopsis, "parent [-hp] [child1 child2]")
+        XCTAssertEqual(child1.synopsis, "parent child1 [-hc1] <files: path...>")
+        XCTAssertEqual(child2.synopsis, "parent child2 [-hc] ")
+        
+        parent.eval([ "--parent", "child1", "-c1" ]) { (args, error) in
+            XCTAssertNil(error)
+            
+            XCTAssertEqual(args["parent"] as? Bool, true)
+            XCTAssertEqual(args["child1"] as? Bool, true)
+        }
+        
+        parent.eval(["child1", "--child1" ]) { (args, error) in
+            XCTAssertNil(error)
+            
+            XCTAssertEqual(args["parent"] as? Bool, false)
+            XCTAssertEqual(args["child1"] as? Bool, true)
+        }
+        
+        parent.eval(["child2", "-c", "asd" ]) { (args, error) in
+            XCTAssertNil(error)
+            
+            XCTAssertEqual(args["parent"] as? Bool, false)
+            XCTAssertEqual(args["cache"] as? String, "asd")
+        }
+        
+        parent.eval([ "-p", "child2" ]) { (args, error) in
+            XCTAssertNil(error)
+            
+            XCTAssertEqual(args["parent"] as? Bool, true)
+            XCTAssertEqual(args["cache"] as? String, "./.cache")
+        }
+        
+        parent.eval(["child2", "-p" ]) { (args, error) in
+            XCTAssertNotNil(error)
+        }
+    }
+    
     func test_options_flags() {
         
         let command = CLI.Command("test", description: "")
@@ -151,8 +238,10 @@ final class CLITests: XCTestCase {
     }
     
     static var allTests = [
+        ("input_types", test_input_types),
         ("options_flags", test_options_flags),
         ("options_parameters", test_options_parameters),
-        ("input_types", test_input_types),
+        ("commands_core", test_command_core),
+        ("commands_subcommands", test_command_subcommands),
     ]
 }
