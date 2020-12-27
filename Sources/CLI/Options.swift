@@ -1,8 +1,8 @@
 //
 //  Options.swift
-//  
 //
 //  Created by MK_Dev on 26.12.20.
+//  Last modified on 27.12.20
 //
 
 import Foundation
@@ -90,7 +90,7 @@ open class Option: CustomStringConvertible, CustomExportStringConvertible {
         // Create a inented description for usage in commands help messages
         var str = ""
         if let type = self.type {
-            str += "\(self.id): \(type.exportDescription)".formated(.underline, .noColor)
+            str += "\(self.id):\(type.exportDescription)".formated(.underline, .noColor)
         }
         return "\t\(self.identifiers.joined(separator: ", ")) \(str)\n\t\t\(self.helpText)"
     }
@@ -104,7 +104,7 @@ open class Option: CustomStringConvertible, CustomExportStringConvertible {
     //
     
     /// Legacy support general creation
-    @available(*, deprecated: 3, message: "Use init(_,_,_,isFlag,isRequired,defaultValue,helpText) instead.")
+    @available(*, deprecated, message: "Use init(_,_,_,isFlag,isRequired,defaultValue,helpText) instead.")
     public convenience init(_ id: String, _ identifiers: [String], _ argument: InputType?, isFlag: Bool, isRequired: Bool, `default`: Any, helpText: String) {
         self.init(id, identifiers, argument, isFlag: isFlag, isRequired: isRequired, defaultValue: `default`, helpText: helpText)
     }
@@ -126,7 +126,7 @@ open class Option: CustomStringConvertible, CustomExportStringConvertible {
     }
     
     /// Legacy suppport flag creation
-    @available(*, deprecated: 3, message: "Use init(_,_,helpText) instead.")
+    @available(*, deprecated, message: "Use init(_,_,helpText) instead.")
     public convenience init(_ identifiers: Array<String>, helpText: String) {
         assert(identifiers.count == 2)
         self.init(identifiers.first!, identifiers.last!, helpText: helpText)

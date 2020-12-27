@@ -1,8 +1,8 @@
 //
 //  InputTypes.swift
-//  
 //
 //  Created by MK_Dev on 26.12.20.
+//  Last modified on 27.12.20
 //
 
 import Foundation
@@ -91,6 +91,34 @@ public class InputType: CustomStringConvertible, CustomExportStringConvertible{
             // Only remove argument once all tests/parses are done
             return args.removeFirst()
         }, "string")
+    }
+    
+    /// Input type that falls back to a return value should no valid input be given.
+    public static func optional(_ inputType: InputType, defaultValue: Any) -> InputType {
+        return InputType({ args -> Any in
+            do {
+                return try inputType.parser(&args)
+            } catch Errors.missingArguments {
+                return defaultValue
+            } catch {
+                throw error
+            }
+        }, inputType.externalDescriptor + "?")
+    }
+    
+    /// Input type that accepts mutiple inputs of the same type
+    public static func sequence(_ inputType: InputType) -> InputType {
+        return InputType({ args -> Any in
+            var values = Array<Any>()
+            while !args.isEmpty {
+                do {
+                    values.append(try inputType.parser(&args))
+                } catch {
+                    break
+                }
+            }
+            return values
+        }, inputType.externalDescriptor + "...")
     }
     
     //

@@ -8,17 +8,24 @@
 import Foundation
 
 //
-// !! Do be redone and merged with 'InputType' !!
+// !! To be removed !!
 //
 
+@available(*, deprecated, message: "Use InputType instead (API not compatabile).")
 public protocol Argument: CustomStringConvertible, CustomExportStringConvertible {
     var id: String { get set }
     func evaluate(_ ctx: inout Array<String>, _ vars: inout Dictionary<String, Any>) throws
 }
 
+@available(*, deprecated, message: "Use InputType instead (API not compatabile).")
 public class TypedArgument: Argument {
     public var id: String
     public var type: InputType
+   
+    @available(*, deprecated, message: "Use init(_,_) instead.")
+    public convenience init(_ id: String, type: InputType) {
+        self.init(id, type)
+    }
     
     public init(_ id: String, _ type: InputType) {
         self.id = id
@@ -38,6 +45,7 @@ public class TypedArgument: Argument {
     }
 }
 
+@available(*, deprecated, message: "Use InputType instead (API not compatabile).")
 public class OptionalArgument: Argument {
     
     public var id: String
@@ -69,6 +77,7 @@ public class OptionalArgument: Argument {
     }
 }
 
+@available(*, deprecated, message: "Use InputType instead (API not compatabile).")
 public class SequenceArgument: Argument {
     public var id: String
     public var type: InputType
@@ -95,6 +104,7 @@ public class SequenceArgument: Argument {
     }
 }
 
+@available(*, deprecated, message: "Use InputType instead (API not compatabile).")
 public class TupelArgument: Argument {
     
     public var id: String = ""

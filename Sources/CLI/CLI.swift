@@ -1,15 +1,11 @@
 //
-// Command.swift
+//  CLI.swift
 //
-//
-// Created by MK_Dev on 29.12.20
+//  Created by MK_Dev on 26.12.20.
+//  Last modified on 27.12.20
 //
 
 import Foundation
-
-//
-// Current Version: 3
-//
 
 open class Command: CustomStringConvertible, CustomExportStringConvertible {
     
@@ -65,16 +61,20 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     private var options: Array<Option>
     
     /// An argument expected by the command (not dash-prefixed).
+    @available(*, deprecated, message: "Use 'argumentType' and 'argumentName' instead.")
     private var argument: Argument?
+    
+    /// The name of the argument expected by the command.
+    private var argumentName: String?
+    
+    /// The type of the argument expected by the command.
+    private var argumentType: InputType?
     
     /// A callback function to handled execution of this particular command.
     private var callback: (([String:Any]) -> Void)?
     
     /// A collection of avaiable subcommands.
     private var subcommands: Array<Command> = []
-    
-    /// A map of all options and arguments read from the raw command line arguments.
-    private var vars: Dictionary<String, Any> = [:]
     
     /// A callname for the command (including parents names).
     internal var completeName: String {
@@ -107,6 +107,11 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         if let argument = self.argument {
             str.append(" > \(argument.description)")
         }
+        
+        if let argumentName = self.argumentName, let argumentType = self.argumentType {
+            str.append(" > Argument<\(argumentName): \(argumentType)>")
+        }
+        
         return "Command<\(self.completeName)> {\n\(str.joined(separator: "\n"))\n}"
     }
     
@@ -133,7 +138,17 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     private var synopsis: String {
         let optionsShort = self.options.map { $0.identifiers.first!.suffix($0.identifiers.first!.count - 1) }.joined()
         let subcommandsShort = self.subcommands.isEmpty ? "" : "[\(self.subcommands.map { $0.names.first! }.joined(separator: " "))]"
-        return "\(self.completeName) [-\(optionsShort)] \(subcommandsShort)\(self.argument?.exportDescription ?? "")"
+        
+        var argumentStr = ""
+        if let argument = self.argument {
+            argumentStr = argument.exportDescription
+        }
+        
+        if let argumentName = self.argumentName, let argumentType = self.argumentType {
+            argumentStr = "<\(argumentName): \(argumentType.exportDescription)>"
+        }
+        
+        return "\(self.completeName) [-\(optionsShort)] \(subcommandsShort)\(argumentStr)"
         
     }
     
@@ -154,6 +169,7 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     public init(_ commands: String..., parent: Command? = nil) {
         assert(!commands.isEmpty)
         assert((parent != nil) ==> (parent?.argument == nil))
+        assert((parent != nil) ==> (parent?.argumentType == nil && parent?.argumentName == nil))
         
         self.names = commands
         self.parent = parent
@@ -165,6 +181,7 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     public init(_ commands: String..., description: String, parent: Command? = nil) {
         assert(!commands.isEmpty)
         assert((parent != nil) ==> (parent?.argument == nil))
+        assert((parent != nil) ==> (parent?.argumentType == nil && parent?.argumentName == nil))
         
         self.names = commands
         self.commandDescription = description
@@ -181,38 +198,72 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     }
     
     /// Sets the argument (can only be one) of the command.
+    @available(*, deprecated, message: "Use set(_,_) instead.")
     public func set(_ argument: Argument) {
         assert(self.subcommands.isEmpty)
         self.argument = argument
     }
     
+    /// Set the argument (can only be one) of the command.
+    public func set(_ argumentName: String, _ argumentType: InputType) {
+        assert(self.subcommands.isEmpty)
+        self.argumentName = argumentName
+        self.argumentType = argumentType
+    }
+    
     /// Defines a general purpose callback function for the command.
+    @available(*, deprecated, renamed: "register")
     public func exec(_ callback: @escaping ([String:Any]) -> Void) {
+        self.register(callback: callback)
+    }
+    
+    // Defines a general purpose callback function for the command.
+    public func register(callback: @escaping (Dictionary<String,Any>) -> Void) {
         self.callback = callback
     }
     
-    /// Evaluates some given arguments and pipes the result and errors into a specific callback function(not general purpose).
-    public func evaluate(_ args: [String],_ callback: @escaping ([String:Any], Error?) -> Void) {
+    
+    /// Deprecated
+    @available(*, deprecated, message: "Use evaluate(_) instead.")
+    public func evaluate(_ args: [String],_ callback: @escaping ([String:Any]) -> Void) throws {
+        let vars = try self.eval(args)
+        callback(vars)
+    }
+    
+    /// Evaulates sime given argument and pipes the result into a specfic callback function.
+    public func evaluate(_ args: Array<String>,_ callback: @escaping (Dictionary<String, Any>, Error?) -> Void) {
         do {
-            try self.evaluate(args, { (vars) -> Void in
-                callback(vars, nil)
-            })
+            let vars = try self.eval(args)
+            callback(vars, nil)
         } catch {
             callback([:], error)
         }
     }
     
-    /// Evaluates some given arguments and pipes the result into a specific callback function(not general purpose).
-    public func evaluate(_ args: [String], _ callback: @escaping ([String:Any]) -> Void) throws {
-        self.exec(callback)
-        try self.evaluate(args)
+    /// Evaluates some given arguments and pipes the result into the general purpose callback function.
+    public func evaluate(_ args: Array<String>) throws {
+        var vars = Dictionary<String,Any>()
+        guard let result = try self.evaluate(args, using: &vars) else {
+            return
+        }
+        if let callback = result.callback {
+            callback(vars)
+        } else {
+            print(result.helpMessage)
+        }
+        
     }
     
-    /// Evaluates some given arguments and pipes the results into the general purpose callback function
-    public func evaluate(_ args: [String]) throws {
-        
-        // Resets the parsed variables on a new parse cycle
-        self.vars = [:]
+    /// Evaluates some given arguments and pipes the result into a specific callback function(not general purpose).
+    public func eval(_ args: Array<String>) throws -> Dictionary<String, Any>{
+        var vars = Dictionary<String,Any>()
+        try self.evaluate(args, using: &vars)
+        return vars
+    }
+    
+    /// Evaluates some given arguments and returns the generated parameters or fails.
+    @discardableResult
+    private func evaluate(_ args: [String], using vars: inout Dictionary<String,Any>) throws -> Command? {
         
         // Stores the raw arguments in a mutable buffer
         var ctx = args
@@ -236,13 +287,13 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
             
             // Remove call argument and begin handeling option-event
             ctx.removeFirst()
-            try option!.evaluate(&ctx, vars: &self.vars)
+            try option!.evaluate(&ctx, vars: &vars)
         }
         
         // If a help flag was found terminate parsing and return the help message
         if (vars["help"] as! Bool) {
             print(self.helpMessage)
-            return
+            return nil
         }
         
         // Check if all required options were set
@@ -257,36 +308,34 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         for subcommand in subcommands {
             if subcommand.names.contains(ctx.first ?? "") {
                 ctx.removeFirst()
-                subcommand.vars = self.vars
-                try subcommand.evaluate(ctx)
-                return
+                return try subcommand.evaluate(ctx, using: &vars)
             }
+        }
+        
+        // Parse the argument if one is specified (deprecated/)
+        if let argument = argument {
+            try argument.evaluate(&ctx, &vars)
         }
         
         // Parse the argument if one is specified
-        if let argument = argument {
-            try argument.evaluate(&ctx, &vars)
-            
-            // Parse options after argument (else there sould be none) (as in first round)
-            while ctx.count != 0 && ctx.first!.hasPrefix("-") {
-                let option = options.first { (op) -> Bool in
-                    return op.matches(ctx)
-                }
-                guard option != nil else {
-                    throw Errors.unknownOption(ctx[0], ctx)
-                }
-                
-                ctx.removeFirst()
-                try option?.evaluate(&ctx, vars: &self.vars)
-            }
+        if let argumentName = self.argumentName, let argumentType = self.argumentType {
+            vars[argumentName] = try argumentType.parser(&ctx)
         }
         
-        // Call callback if possible or print the help message
-        if let callback = self.callback {
-            callback(vars)
-        } else {
-            print(self.helpMessage)
+        // Parse options after argument (else there sould be none) (as in first round)
+        while ctx.count != 0 && ctx.first!.hasPrefix("-") {
+            let option = options.first { (op) -> Bool in
+                return op.matches(ctx)
+            }
+            guard option != nil else {
+                throw Errors.unknownOption(ctx[0], ctx)
+            }
+            
+            ctx.removeFirst()
+            try option?.evaluate(&ctx, vars: &vars)
         }
+        
+        return self
     }
 }
 

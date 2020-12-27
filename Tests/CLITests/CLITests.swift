@@ -8,52 +8,56 @@ final class CLITests: XCTestCase {
         let command = CLI.Command("test", description: "")
         
         command.add(
-            .init("-h", helpText: "<>"),
+            .init("-ha", helpText: "<>"),
             .init("-geh", helpText: "<>"),
             .init("-g", helpText: "<>"),
             .init( "-c", "--current" , helpText: "<>")
         )
         
-        do {
+        command.evaluate([ "-ha", "-g" ]) { (args, error) in
+            XCTAssertNil(error)
             
-            try command.evaluate([ "-h", "-g" ]) { (args) in
-                XCTAssertEqual(args["h"] as? Bool, true)
-                XCTAssertEqual(args["geh"] as? Bool, false)
-                XCTAssertEqual(args["g"] as? Bool, true)
-                XCTAssertEqual(args["current"] as? Bool, false)
-            }
-            
-            try command.evaluate([ "-g", "-geh" ], { (args) in
-                XCTAssertEqual(args["h"] as? Bool, false)
-                XCTAssertEqual(args["geh"] as? Bool, true)
-                XCTAssertEqual(args["g"] as? Bool, true)
-                XCTAssertEqual(args["current"] as? Bool, false)
-            })
-            
-            try command.evaluate(["-c", "-g"], { (args) in
-                XCTAssertEqual(args["h"] as? Bool, false)
-                XCTAssertEqual(args["geh"] as? Bool, false)
-                XCTAssertEqual(args["g"] as? Bool, true)
-                XCTAssertEqual(args["current"] as? Bool, true)
-            })
-            
-            try command.evaluate(["--current", "-geh"], { (args) in
-                XCTAssertEqual(args["h"] as? Bool, false)
-                XCTAssertEqual(args["geh"] as? Bool, true)
-                XCTAssertEqual(args["g"] as? Bool, false)
-                XCTAssertEqual(args["current"] as? Bool, true)
-            })
-            
-        } catch {
-            XCTFail(error.localizedDescription)
+            XCTAssertEqual(args["ha"] as? Bool, true)
+            XCTAssertEqual(args["geh"] as? Bool, false)
+            XCTAssertEqual(args["g"] as? Bool, true)
+            XCTAssertEqual(args["current"] as? Bool, false)
         }
         
+        command.evaluate([ "-g", "-geh" ], { (args, error) in
+            XCTAssertNil(error)
+            
+            XCTAssertEqual(args["ha"] as? Bool, false)
+            XCTAssertEqual(args["geh"] as? Bool, true)
+            XCTAssertEqual(args["g"] as? Bool, true)
+            XCTAssertEqual(args["current"] as? Bool, false)
+        })
+        
+        command.evaluate(["-c", "-g"], { (args, error) in
+            XCTAssertNil(error)
+            
+            XCTAssertEqual(args["ha"] as? Bool, false)
+            XCTAssertEqual(args["geh"] as? Bool, false)
+            XCTAssertEqual(args["g"] as? Bool, true)
+            XCTAssertEqual(args["current"] as? Bool, true)
+        })
+        
+        command.evaluate(["--current", "-geh"], { (args, error) in
+            XCTAssertNil(error)
+            
+            XCTAssertEqual(args["ha"] as? Bool, false)
+            XCTAssertEqual(args["geh"] as? Bool, true)
+            XCTAssertEqual(args["g"] as? Bool, false)
+            XCTAssertEqual(args["current"] as? Bool, true)
+        })
+        
+        
         command.evaluate(["--currentt", "-geh"], { (args, error) in
-            XCTAssertEqual(args["h"] as? Bool, nil)
+            XCTAssertNotNil(error)
+            
+            XCTAssertEqual(args["ha"] as? Bool, nil)
             XCTAssertEqual(args["geh"] as? Bool, nil)
             XCTAssertEqual(args["g"] as? Bool, nil)
             XCTAssertEqual(args["current"] as? Bool, nil)
-            XCTAssertNotNil(error)
         })
     }
     
@@ -66,29 +70,30 @@ final class CLITests: XCTestCase {
             .init("t3", [ "-t3" ], InputType.choice([ "a", "b", "c" ]), isFlag: false, isRequired: false, defaultValue: "none", helpText: "<>")
         )
         
-        do {
+        
+        command.evaluate([ "-t1", "t1:value", "-t3", "a" ], { (args, error) in
+            XCTAssertNil(error)
             
-            try command.evaluate([ "-t1", "t1:value", "-t3", "a" ], { (args) in
-                XCTAssertEqual(args["t1"] as? String, "t1:value")
-                XCTAssertEqual(args["t2"] as? Int, 0)
-                XCTAssertEqual(args["t3"] as? String, "a")
-            })
+            XCTAssertEqual(args["t1"] as? String, "t1:value")
+            XCTAssertEqual(args["t2"] as? Int, 0)
+            XCTAssertEqual(args["t3"] as? String, "a")
+        })
+        
+        command.evaluate([ "--teh2", "123", "-t3", "c"  ], { (args, error) in
+            XCTAssertNil(error)
             
-            try command.evaluate([ "--teh2", "123", "-t3", "c"  ], { (args) in
-                XCTAssertEqual(args["t1"] as? String, "t1:default")
-                XCTAssertEqual(args["t2"] as? Int, 123)
-                XCTAssertEqual(args["t3"] as? String, "c")
-            })
+            XCTAssertEqual(args["t1"] as? String, "t1:default")
+            XCTAssertEqual(args["t2"] as? Int, 123)
+            XCTAssertEqual(args["t3"] as? String, "c")
+        })
+        
+        command.evaluate([], { (args, error) in
+            XCTAssertNil(error)
             
-            try command.evaluate([], { (args) in
-                XCTAssertEqual(args["t1"] as? String, "t1:default")
-                XCTAssertEqual(args["t2"] as? Int, 0)
-                XCTAssertEqual(args["t3"] as? String, "none")
-            })
-            
-        } catch {
-            XCTFail(error.localizedDescription)
-        }
+            XCTAssertEqual(args["t1"] as? String, "t1:default")
+            XCTAssertEqual(args["t2"] as? Int, 0)
+            XCTAssertEqual(args["t3"] as? String, "none")
+        })
         
         command.evaluate([ "-t1", "asd", "-t2", "asd" ]) { (args, error) in
             XCTAssertNotNil(error)
@@ -101,7 +106,6 @@ final class CLITests: XCTestCase {
         command.evaluate([ "-t11", "asd", "-t2", "123" ]) { (args, error) in
             XCTAssertNotNil(error)
         }
-        
     }
     
     func test_input_types() {
@@ -131,6 +135,17 @@ final class CLITests: XCTestCase {
         XCTAssertEqual(args.first, "ls")
         
         XCTAssertEqual(try? CLI.InputType.choice(["pwd", "ls", "cd"]).parser(&args) as? String, "ls")
+        XCTAssertEqual(args.first, nil)
+        
+        args = [ "123" ]
+        XCTAssertEqual(try? CLI.InputType.optional(InputType.int(10), defaultValue: 42).parser(&args) as? Int, 123)
+        XCTAssertEqual(args.first, nil)
+        
+        XCTAssertEqual(try? CLI.InputType.optional(InputType.int(10), defaultValue: 42).parser(&args) as? Int, 42)
+        XCTAssertEqual(args.first, nil)
+        
+        args = [ "1", "2", "3" ]
+        XCTAssertEqual(try? CLI.InputType.sequence(InputType.int(10)).parser(&args) as? Array<Int>, [ 1, 2, 3 ])
         XCTAssertEqual(args.first, nil)
         
     }
