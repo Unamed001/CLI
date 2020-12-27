@@ -14,7 +14,7 @@ final class CLITests: XCTestCase {
             .init( "-c", "--current" , helpText: "<>")
         )
         
-        command.evaluate([ "-ha", "-g" ]) { (args, error) in
+        command.eval([ "-ha", "-g" ]) { (args, error) in
             XCTAssertNil(error)
             
             XCTAssertEqual(args["ha"] as? Bool, true)
@@ -23,7 +23,7 @@ final class CLITests: XCTestCase {
             XCTAssertEqual(args["current"] as? Bool, false)
         }
         
-        command.evaluate([ "-g", "-geh" ], { (args, error) in
+        command.eval([ "-g", "-geh" ], { (args, error) in
             XCTAssertNil(error)
             
             XCTAssertEqual(args["ha"] as? Bool, false)
@@ -32,7 +32,7 @@ final class CLITests: XCTestCase {
             XCTAssertEqual(args["current"] as? Bool, false)
         })
         
-        command.evaluate(["-c", "-g"], { (args, error) in
+        command.eval(["-c", "-g"], { (args, error) in
             XCTAssertNil(error)
             
             XCTAssertEqual(args["ha"] as? Bool, false)
@@ -41,7 +41,7 @@ final class CLITests: XCTestCase {
             XCTAssertEqual(args["current"] as? Bool, true)
         })
         
-        command.evaluate(["--current", "-geh"], { (args, error) in
+        command.eval(["--current", "-geh"], { (args, error) in
             XCTAssertNil(error)
             
             XCTAssertEqual(args["ha"] as? Bool, false)
@@ -51,7 +51,7 @@ final class CLITests: XCTestCase {
         })
         
         
-        command.evaluate(["--currentt", "-geh"], { (args, error) in
+        command.eval(["--currentt", "-geh"], { (args, error) in
             XCTAssertNotNil(error)
             
             XCTAssertEqual(args["ha"] as? Bool, nil)
@@ -71,7 +71,7 @@ final class CLITests: XCTestCase {
         )
         
         
-        command.evaluate([ "-t1", "t1:value", "-t3", "a" ], { (args, error) in
+        command.eval([ "-t1", "t1:value", "-t3", "a" ], { (args, error) in
             XCTAssertNil(error)
             
             XCTAssertEqual(args["t1"] as? String, "t1:value")
@@ -79,7 +79,7 @@ final class CLITests: XCTestCase {
             XCTAssertEqual(args["t3"] as? String, "a")
         })
         
-        command.evaluate([ "--teh2", "123", "-t3", "c"  ], { (args, error) in
+        command.eval([ "--teh2", "123", "-t3", "c"  ], { (args, error) in
             XCTAssertNil(error)
             
             XCTAssertEqual(args["t1"] as? String, "t1:default")
@@ -87,7 +87,7 @@ final class CLITests: XCTestCase {
             XCTAssertEqual(args["t3"] as? String, "c")
         })
         
-        command.evaluate([], { (args, error) in
+        command.eval([], { (args, error) in
             XCTAssertNil(error)
             
             XCTAssertEqual(args["t1"] as? String, "t1:default")
@@ -95,15 +95,15 @@ final class CLITests: XCTestCase {
             XCTAssertEqual(args["t3"] as? String, "none")
         })
         
-        command.evaluate([ "-t1", "asd", "-t2", "asd" ]) { (args, error) in
+        command.eval([ "-t1", "asd", "-t2", "asd" ]) { (args, error) in
             XCTAssertNotNil(error)
         }
         
-        command.evaluate([ "-t3", "f", "-t2", "123" ]) { (args, error) in
+        command.eval([ "-t3", "f", "-t2", "123" ]) { (args, error) in
             XCTAssertNotNil(error)
         }
         
-        command.evaluate([ "-t11", "asd", "-t2", "123" ]) { (args, error) in
+        command.eval([ "-t11", "asd", "-t2", "123" ]) { (args, error) in
             XCTAssertNotNil(error)
         }
     }

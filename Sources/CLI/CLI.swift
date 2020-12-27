@@ -222,7 +222,6 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         self.callback = callback
     }
     
-    
     /// Deprecated
     @available(*, deprecated, message: "Use evaluate(_) instead.")
     public func evaluate(_ args: [String],_ callback: @escaping ([String:Any]) -> Void) throws {
@@ -230,8 +229,14 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         callback(vars)
     }
     
-    /// Evaulates sime given argument and pipes the result into a specfic callback function.
+    /// Deprecated
+    @available(*, deprecated, renamed: "eval")
     public func evaluate(_ args: Array<String>,_ callback: @escaping (Dictionary<String, Any>, Error?) -> Void) {
+        self.eval(args, callback)
+    }
+    
+    /// Evaulates sime given argument and pipes the result into a specfic callback function.
+    public func eval(_ args: Array<String>,_ callback: @escaping (Dictionary<String, Any>, Error?) -> Void) {
         do {
             let vars = try self.eval(args)
             callback(vars, nil)
@@ -240,8 +245,16 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         }
     }
     
+    /// Runs the parser for the current command using the 'CommandLine.arguments'.
+    @available(OSX 10.10, *)
+    public func run() throws {
+        var args = CommandLine.arguments
+        args.removeFirst()
+        try self.run(args)
+    }
+    
     /// Evaluates some given arguments and pipes the result into the general purpose callback function.
-    public func evaluate(_ args: Array<String>) throws {
+    public func run(_ args: Array<String>) throws {
         var vars = Dictionary<String,Any>()
         guard let result = try self.evaluate(args, using: &vars) else {
             return
@@ -251,7 +264,12 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         } else {
             print(result.helpMessage)
         }
-        
+    }
+    
+    /// Deprecated
+    @available(*, deprecated, renamed: "run")
+    public func evaluate(_ args: Array<String>) throws {
+        try self.run(args)
     }
     
     /// Evaluates some given arguments and pipes the result into a specific callback function(not general purpose).
@@ -263,7 +281,7 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     
     /// Evaluates some given arguments and returns the generated parameters or fails.
     @discardableResult
-    private func evaluate(_ args: [String], using vars: inout Dictionary<String,Any>) throws -> Command? {
+    private func evaluate(_ args: Array<String>, using vars: inout Dictionary<String,Any>) throws -> Command? {
         
         // Stores the raw arguments in a mutable buffer
         var ctx = args

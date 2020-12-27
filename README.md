@@ -52,10 +52,7 @@ command.register(callback: { args in
   }
 })
 
-// Main (removeing binary call path)
-var args = CommandLine.arguments
-args.removeFirst()
-try! command.evaluate(args)
+try! command.run()
 ```
 ### Define subcommands to better structure you command line tool
 
@@ -66,11 +63,10 @@ let command = Command("someCmd")
 ...
 
 let subcommand = Command("test", parent: command)
+subcommand.register { args in ... }
 ...
 
-var args = CommandLine.arguments
-args.removeFirst()
-try! command.evaluate(args)
+try! command.run()
 ```
 
 ### Use specific callback functions
