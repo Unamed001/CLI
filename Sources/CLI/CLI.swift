@@ -9,6 +9,8 @@ import Foundation
 
 open class Command: CustomStringConvertible, CustomExportStringConvertible {
     
+    // MARK: - External Error Handling
+    
     //
     // == External errors ==
     //
@@ -17,11 +19,88 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     //
     
     /// CLI parsing erros that can be handeled by the user.
-    enum Errors: Error {
+    public enum Errors: Error {
         case unknownOption(String, [String])
         case missingRequiredOption(Option)
-        case missingAnyArgument
+        case optionParsingError(Option, Error)
+        case argumentParsingError(Error)
     }
+    
+    //
+    // == Error Handlers ==
+    //
+    // The command class supplies a function to  handle errors thrown in
+    // the prasing process.
+    //
+    
+    /// Handles errors emitted from command line parsing
+    public func handleError(_ error: Error) {
+        // Define common prefix
+        let prefix = self.completeName + ": " + "Error".formated(.bold, .red)
+        
+        if let error = error as? Command.Errors {
+            switch error {
+                
+            // Catch error if a required option is missing
+            case .missingRequiredOption(let option):
+                print(prefix + " Missing required option \((option.id + ":" + (option.type?.exportDescription ?? "flag")).formated(.underline, .noColor))")
+                break
+                
+            // Catch errors on unkown options detecttion
+            case .unknownOption(let opt, let rem):
+                print(prefix + " Unkown option token '\(opt)' in (\(rem.joined(separator: " ")))")
+                break
+                
+            // Catch errors thrown in the option parsing phase
+            case .optionParsingError(let option, let error):
+                if let error = error as? InputType.Errors {
+                    switch error {
+                    case .unkownChoiceDescriptior(let ch, let choices):
+                        print(prefix + " Unkown choice '\(ch)' at option '\(option.id)'. Use '\(choices.joined(separator: " | "))'")
+                        break
+                    case .missingArguments:
+                        print(prefix + " Missing argument at option '\(option.id)'")
+                        break
+                    case .invalidStringFormat:
+                        print(prefix + " Invalid string format at option '\(option.id)'")
+                        break
+                    case .parsingError:
+                        print(prefix + " Parsing error at option '\(option.id)'")
+                        break
+                    }
+                } else {
+                    print(prefix + "\n" + error.localizedDescription)
+                }
+                break
+                
+            // Catch errors thrown in the argument parsing phase
+            case .argumentParsingError(let error):
+                if let error = error as? InputType.Errors {
+                    switch error {
+                    case .unkownChoiceDescriptior(let ch, let choices):
+                        print(prefix + " Unkown choice '\(ch)' at argument '\(self.argumentName!)'. Use '\(choices.joined(separator: " | "))'")
+                        break
+                    case .missingArguments:
+                        print(prefix + " Missing argument at argument '\(self.argumentName!)'")
+                        break
+                    case .invalidStringFormat:
+                        print(prefix + " Invalid string format at argument '\(self.argumentName!)'")
+                        break
+                    case .parsingError:
+                        print(prefix + " Parsing error at argument '\(self.argumentName!)'")
+                        break
+                    }
+                } else {
+                    print(prefix + "\n" + error.localizedDescription)
+                }
+                break
+            }
+        } else {
+            print(prefix + "\n" + error.localizedDescription)
+        }
+    }
+    
+    // MARK: - Properties
     
     //
     // == Identification ==
@@ -140,6 +219,8 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         
     }
     
+    // MARK: - Command construction
+    
     //
     // == Command Construction ==
     //
@@ -209,6 +290,8 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         self.callback = callback
     }
     
+    // MARK: - Argument evaluation
+    
     /// Deprecated
     @available(*, deprecated, message: "Use evaluate(_) instead.")
     public func evaluate(_ args: [String],_ callback: @escaping ([String:Any]) -> Void) throws {
@@ -243,7 +326,7 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     /// Evaluates some given arguments and pipes the result into the general purpose callback function.
     public func run(_ args: Array<String>) throws {
         var vars = Dictionary<String,Any>()
-        guard let result = try self.evaluate(args, using: &vars) else {
+        guard let result = try self.evaluate(arguments: args, using: &vars) else {
             return
         }
         if let callback = result.callback {
@@ -262,16 +345,16 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     /// Evaluates some given arguments and pipes the result into a specific callback function(not general purpose).
     public func eval(_ args: Array<String>) throws -> Dictionary<String, Any>{
         var vars = Dictionary<String,Any>()
-        try self.evaluate(args, using: &vars)
+        try self.evaluate(arguments: args, using: &vars)
         return vars
     }
     
     /// Evaluates some given arguments and returns the generated parameters or fails.
     @discardableResult
-    private func evaluate(_ args: Array<String>, using vars: inout Dictionary<String,Any>) throws -> Command? {
+    private func evaluate(arguments: Array<String>, using vars: inout Dictionary<String,Any>) throws -> Command? {
         
         // Stores the raw arguments in a mutable buffer
-        var ctx = args
+        var ctx = arguments
         
         // Sets the default values of operations if not allready set (sould not be)
         for option in options {
@@ -292,7 +375,11 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
             
             // Remove call argument and begin handeling option-event
             ctx.removeFirst()
-            try option!.evaluate(&ctx, vars: &vars)
+            do {
+                try option!.evaluate(&ctx, vars: &vars)
+            } catch {
+                throw Errors.optionParsingError(option!, error)
+            }
         }
         
         // If a help flag was found terminate parsing and return the help message
@@ -313,7 +400,7 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         for subcommand in subcommands {
             if subcommand.names.contains(ctx.first ?? "") {
                 ctx.removeFirst()
-                return try subcommand.evaluate(ctx, using: &vars)
+                return try subcommand.evaluate(arguments: ctx, using: &vars)
             }
         }
         
@@ -331,8 +418,13 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
                 throw Errors.unknownOption(ctx[0], ctx)
             }
             
+            // Remove call argument and begin handeling option-event
             ctx.removeFirst()
-            try option?.evaluate(&ctx, vars: &vars)
+            do {
+                try option!.evaluate(&ctx, vars: &vars)
+            } catch {
+                throw Errors.optionParsingError(option!, error)
+            }
         }
         
         return self

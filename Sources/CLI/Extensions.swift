@@ -7,6 +7,15 @@
 
 import Foundation
 
+
+/// A type with a command line compatabile textual representation.
+public protocol CustomExportStringConvertible{
+    /// Defines a string for export to the command line.
+    var exportDescription: String { get }
+}
+
+// MARK: - Command line specific Extensions
+
 /// This extension provieds colored string for the command line interface.
 extension String {
     
@@ -90,12 +99,6 @@ public func shell(_ command: String...) -> String {
     return output
 }
 
-/// A type with a command line compatabile textual representation.
-public protocol CustomExportStringConvertible{
-    /// Defines a string for export to the command line.
-    
-    var exportDescription: String { get }
-}
 
 /// A functions that returns a securely read passphrase from stdin.
 public func readPassphrase(_ prefix: String) -> String? {
@@ -106,6 +109,7 @@ public func readPassphrase(_ prefix: String) -> String? {
     return String.init(validatingUTF8: phrase)
 }
 
+// MARK: - Boolean opertators
 
 /// Boolean implies operator.
 infix operator ==>: AdditionPrecedence

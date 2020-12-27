@@ -11,6 +11,8 @@ import Foundation
 /// A object that defines the CLI input behaviour of an internal type.
 public class InputType: CustomStringConvertible, CustomExportStringConvertible{
     
+    // MARK: - Static Implmentations
+    
     // == Static Definitions ==
     //
     // To provide some predefined parsers static constants are used.
@@ -86,7 +88,7 @@ public class InputType: CustomStringConvertible, CustomExportStringConvertible{
             guard !args.isEmpty else { throw Errors.missingArguments }
             // Test if string is valid according to choices
             guard choices.contains(args.first!) else {
-                throw Errors.unkownChoiceDescriptior
+                throw Errors.unkownChoiceDescriptior(args.first!, choices)
             }
             // Only remove argument once all tests/parses are done
             return args.removeFirst()
@@ -97,8 +99,10 @@ public class InputType: CustomStringConvertible, CustomExportStringConvertible{
     public static func optional(_ inputType: InputType, defaultValue: Any) -> InputType {
         return InputType({ args -> Any in
             do {
+                // Use the other defined type for parsing
                 return try inputType.parser(&args)
             } catch Errors.missingArguments {
+                // If parsing failed use default value
                 return defaultValue
             } catch {
                 throw error
@@ -110,8 +114,10 @@ public class InputType: CustomStringConvertible, CustomExportStringConvertible{
     public static func sequence(_ inputType: InputType) -> InputType {
         return InputType({ args -> Any in
             var values = Array<Any>()
+            // Iterate until faile to parse or done
             while !args.isEmpty {
                 do {
+                    // Use supplied type for parsing
                     values.append(try inputType.parser(&args))
                 } catch {
                     break
@@ -136,7 +142,7 @@ public class InputType: CustomStringConvertible, CustomExportStringConvertible{
         case missingArguments
         case parsingError
         case invalidStringFormat
-        case unkownChoiceDescriptior
+        case unkownChoiceDescriptior(String, Array<String>)
     }
     
     //
@@ -148,6 +154,8 @@ public class InputType: CustomStringConvertible, CustomExportStringConvertible{
     // Can use up mutiple arguments, can throw internal errors.
     // Should remove raw arguments once parsed succesfully.
     //
+    
+    // MARK: - Properties and intializers
     
     /// Function that consumes the given input and transforms it into a value as defined by the InputType object.
     internal var parser: (inout Array<String>) throws -> Any

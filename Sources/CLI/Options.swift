@@ -10,6 +10,8 @@ import Foundation
 /// Object that defines a (dash-prefixed) option for a CLI argument parser.
 open class Option: CustomStringConvertible, CustomExportStringConvertible {
     
+    // MARK: - Properties
+    
     //
     // == Identification ==
     //
@@ -95,6 +97,8 @@ open class Option: CustomStringConvertible, CustomExportStringConvertible {
         return "\t\(self.identifiers.joined(separator: ", ")) \(str)\n\t\t\(self.helpText)"
     }
     
+    // MARK: - Initalizers
+    
     //
     // == Initialisation ==
     //
@@ -104,7 +108,7 @@ open class Option: CustomStringConvertible, CustomExportStringConvertible {
     //
     
     /// Legacy support general creation
-    @available(*, deprecated, message: "Use init(_,_,_,isFlag,isRequired,defaultValue,helpText) instead.")
+    @available(*, deprecated, message: "Use helpValue instead of default.")
     public convenience init(_ id: String, _ identifiers: [String], _ argument: InputType?, isFlag: Bool, isRequired: Bool, `default`: Any, helpText: String) {
         self.init(id, identifiers, argument, isFlag: isFlag, isRequired: isRequired, defaultValue: `default`, helpText: helpText)
     }
@@ -175,6 +179,8 @@ open class Option: CustomStringConvertible, CustomExportStringConvertible {
     // Should the option no be a flag then it should have a argument ('type')
     // and thus will try to parse the expected value.
     //
+    
+    // MARK: - Evaluation
     
     /// Applies the defined options behaviour to the current context.
     internal func evaluate(_ ctx: inout [String], vars: inout [String:Any]) throws {
