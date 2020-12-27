@@ -60,10 +60,6 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     /// A collection of all possible (dash-prefixed) command line options.
     private var options: Array<Option>
     
-    /// An argument expected by the command (not dash-prefixed).
-    @available(*, deprecated, message: "Use 'argumentType' and 'argumentName' instead.")
-    private var argument: Argument?
-    
     /// The name of the argument expected by the command.
     private var argumentName: String?
     
@@ -103,10 +99,6 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         self.options.forEach { (option) in
             str.append(" - \(option.description)")
         }
-        // Add argument to description if existens
-        if let argument = self.argument {
-            str.append(" > \(argument.description)")
-        }
         
         if let argumentName = self.argumentName, let argumentType = self.argumentType {
             str.append(" > Argument<\(argumentName): \(argumentType)>")
@@ -140,10 +132,6 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         let subcommandsShort = self.subcommands.isEmpty ? "" : "[\(self.subcommands.map { $0.names.first! }.joined(separator: " "))]"
         
         var argumentStr = ""
-        if let argument = self.argument {
-            argumentStr = argument.exportDescription
-        }
-        
         if let argumentName = self.argumentName, let argumentType = self.argumentType {
             argumentStr = "<\(argumentName): \(argumentType.exportDescription)>"
         }
@@ -168,7 +156,6 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     /// Creates a new command with the given names (and parent).
     public init(_ commands: String..., parent: Command? = nil) {
         assert(!commands.isEmpty)
-        assert((parent != nil) ==> (parent?.argument == nil))
         assert((parent != nil) ==> (parent?.argumentType == nil && parent?.argumentName == nil))
         
         self.names = commands
@@ -180,7 +167,6 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     /// Creates a new command with the given names, description (and parent).
     public init(_ commands: String..., description: String, parent: Command? = nil) {
         assert(!commands.isEmpty)
-        assert((parent != nil) ==> (parent?.argument == nil))
         assert((parent != nil) ==> (parent?.argumentType == nil && parent?.argumentName == nil))
         
         self.names = commands
@@ -201,7 +187,8 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     @available(*, deprecated, message: "Use set(_,_) instead.")
     public func set(_ argument: Argument) {
         assert(self.subcommands.isEmpty)
-        self.argument = argument
+        self.argumentName = argument.id
+        self.argumentType = argument.type
     }
     
     /// Set the argument (can only be one) of the command.
@@ -328,11 +315,6 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
                 ctx.removeFirst()
                 return try subcommand.evaluate(ctx, using: &vars)
             }
-        }
-        
-        // Parse the argument if one is specified (deprecated/)
-        if let argument = argument {
-            try argument.evaluate(&ctx, &vars)
         }
         
         // Parse the argument if one is specified

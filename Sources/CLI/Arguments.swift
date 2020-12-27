@@ -8,124 +8,77 @@
 import Foundation
 
 //
-// !! To be removed !!
+// == Legacy Support 0.9.1 ==
+//
+// The Argument protocol and it's implementations will be removed in v.1
+// concerning v0.9.1 the argument types will be internally deconstructed to autoparse
+// them into the new CLI parsing mechanisms
 //
 
-@available(*, deprecated, message: "Use InputType instead (API not compatabile).")
-public protocol Argument: CustomStringConvertible, CustomExportStringConvertible {
+
+@available(*, deprecated, message: "Use new InputType API instead.")
+public protocol Argument{
     var id: String { get set }
-    func evaluate(_ ctx: inout Array<String>, _ vars: inout Dictionary<String, Any>) throws
+    var type: InputType { get set }
 }
 
-@available(*, deprecated, message: "Use InputType instead (API not compatabile).")
+@available(*, deprecated, message: "Use new InputType API instead.")
 public class TypedArgument: Argument {
+    
     public var id: String
     public var type: InputType
    
-    @available(*, deprecated, message: "Use init(_,_) instead.")
+    @available(*, deprecated, message: "Use new InputType API instead.")
     public convenience init(_ id: String, type: InputType) {
         self.init(id, type)
     }
     
+    @available(*, deprecated, message: "Use new InputType API instead.")
     public init(_ id: String, _ type: InputType) {
         self.id = id
         self.type = type
     }
-    
-    public func evaluate(_ ctx: inout Array<String>, _ vars: inout Dictionary<String, Any>) throws {
-        vars[self.id] = try self.type.parser(&ctx)
-    }
-    
-    public var description: String {
-        return "TypedArgument<\(self.id): \(self.type)>"
-    }
-    
-    public var exportDescription: String {
-        return "<\(id)>"
-    }
 }
 
-@available(*, deprecated, message: "Use InputType instead (API not compatabile).")
+@available(*, deprecated, message: "Use new InputType API instead.")
 public class OptionalArgument: Argument {
     
     public var id: String
-    public var argument: Argument
-    public var defaultValue: Any
+    public var type: InputType
     
+    @available(*, deprecated, message: "Use new InputType API instead.")
     public init(_ argument: Argument, _ defaultValue: Any) {
-        self.argument = argument
-        self.defaultValue = defaultValue
-        self.id = self.argument.id
-    }
-    
-    public func evaluate(_ ctx: inout Array<String>, _ vars: inout Dictionary<String, Any>) throws {
-        do {
-            try self.argument.evaluate(&ctx, &vars)
-        } catch InputType.Errors.missingArguments {
-            vars[self.id] = self.defaultValue
-        } catch {
-            throw error
-        }
-    }
-    
-    public var description: String {
-        return "OptionalArgument<\(self.argument.description)>"
-    }
-    
-    public var exportDescription: String {
-        return self.argument.exportDescription + "?"
+        self.id = argument.id
+        self.type = InputType.optional(argument.type, defaultValue: defaultValue)
     }
 }
 
-@available(*, deprecated, message: "Use InputType instead (API not compatabile).")
+@available(*, deprecated, message: "Use new InputType API instead.")
 public class SequenceArgument: Argument {
     public var id: String
     public var type: InputType
     
+    @available(*, deprecated, message: "Use new InputType API instead.")
     public init(_ id: String, _ type: InputType) {
         self.id = id
-        self.type = type
-    }
-    
-    public func evaluate(_ ctx: inout Array<String>, _ vars: inout Dictionary<String, Any>) throws {
-        var array = Array<Any>()
-        while !ctx.isEmpty {
-            array.append(try self.type.parser(&ctx))
-        }
-        vars[self.id] = array
-    }
-    
-    public var description: String {
-        return "SequenceArgument<\(self.id): \(self.type)>"
-    }
-    
-    public var exportDescription: String {
-        return "<\(self.id)...>"
+        self.type = InputType.sequence(type)
     }
 }
 
-@available(*, deprecated, message: "Use InputType instead (API not compatabile).")
+@available(*, deprecated, message: "Use new InputType API instead.")
 public class TupelArgument: Argument {
     
     public var id: String = ""
-    public var lhs: TypedArgument
-    public var rhs: TypedArgument
+    public var type: InputType
     
+    @available(*, deprecated, message: "Use new InputType API instead.")
     public init(_ lhs: TypedArgument, _ rhs: TypedArgument) {
-        self.lhs = lhs
-        self.rhs = rhs
-    }
-    
-    public func evaluate(_ ctx: inout [String], _ vars: inout [String : Any]) throws {
-        try self.lhs.evaluate(&ctx, &vars)
-        try self.rhs.evaluate(&ctx, &vars)
-    }
-    
-    public var description: String {
-        return "TupelArgument<\(self.rhs.description) | \(self.lhs.description)>"
-    }
-    
-    public var exportDescription: String {
-        return lhs.description + " " + rhs.description
+        assert(lhs.id == rhs.id)
+        self.id = lhs.id
+        self.type = InputType({ args -> (Any, Any) in
+            let val1 = try lhs.type.parser(&args)
+            let val2 = try rhs.type.parser(&args)
+            return (val1, val2)
+        })
     }
 }
