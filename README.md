@@ -54,6 +54,7 @@ command.register(callback: { args in
 
 try! command.run()
 ```
+
 ### Define subcommands to better structure you command line tool
 
 ```swift
@@ -68,6 +69,8 @@ subcommand.register { args in ... }
 
 try! command.run()
 ```
+- Note that options of parent commands are inherited (including the help command defined in the main root)
+- Note that CLI provides a function to handle error thrown in the 'eval' or 'run' calls.
 
 ### Use specific callback functions
 ```swift
@@ -86,6 +89,7 @@ command.evaluate(args) { args, error in
   }
 }
 ```
+- Note that this method does not override the general-purpose callback
 
 ## License
 

@@ -54,8 +54,8 @@ final class CLITests: XCTestCase {
         )
         
         XCTAssertEqual(parent.synopsis, "parent [-hp] [child1 child2]")
-        XCTAssertEqual(child1.synopsis, "parent child1 [-hc1] <files: path...>")
-        XCTAssertEqual(child2.synopsis, "parent child2 [-hc] ")
+        XCTAssertEqual(child1.synopsis, "parent child1 [-hpc1] <files: path...>")
+        XCTAssertEqual(child2.synopsis, "parent child2 [-hpc] ")
         
         parent.eval([ "--parent", "child1", "-c1" ]) { (args, error) in
             XCTAssertNil(error)
@@ -86,7 +86,10 @@ final class CLITests: XCTestCase {
         }
         
         parent.eval(["child2", "-p" ]) { (args, error) in
-            XCTAssertNotNil(error)
+            XCTAssertNil(error)
+            
+            XCTAssertEqual(args["parent"] as? Bool, true)
+            XCTAssertEqual(args["cache"] as? String, "./.cache")
         }
     }
     

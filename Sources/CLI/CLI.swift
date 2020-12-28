@@ -139,6 +139,10 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     /// A collection of all possible (dash-prefixed) command line options.
     private var options: Array<Option>
     
+    private var availableOptions: Array<Option> {
+        return (self.parent?.availableOptions ?? []) + self.options
+    }
+    
     /// The name of the argument expected by the command.
     private var argumentName: String?
     
@@ -175,7 +179,7 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
             str.append(" + Command<\(command.names.joined(separator: " | "))>")
         }
         // Collect all options for descriptiom
-        self.options.forEach { (option) in
+        self.availableOptions.forEach { (option) in
             str.append(" - \(option.description)")
         }
         
@@ -200,14 +204,14 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
             str += "\n"
         }
         str += "OPTIONS:\n"
-        str += self.options.map({ $0.exportDescription }).joined(separator: "\n")
+        str += self.availableOptions.map({ $0.exportDescription }).joined(separator: "\n")
         str += "\n"
         return str
     }
     
     /// A short description of the commands syntax
     internal var synopsis: String {
-        let optionsShort = self.options.map { $0.identifiers.first!.suffix($0.identifiers.first!.count - 1) }.joined()
+        let optionsShort = self.availableOptions.map { $0.identifiers.first!.suffix($0.identifiers.first!.count - 1) }.joined()
         let subcommandsShort = self.subcommands.isEmpty ? "" : "[\(self.subcommands.map { $0.names.first! }.joined(separator: " "))]"
         
         var argumentStr = ""
@@ -216,7 +220,6 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         }
         
         return "\(self.completeName) [-\(optionsShort)] \(subcommandsShort)\(argumentStr)"
-        
     }
     
     // MARK: - Command construction
@@ -241,7 +244,7 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         
         self.names = commands
         self.parent = parent
-        self.options = [ .init("-h", "--help", helpText: "Shows this help text") ]
+        self.options = parent == nil ? [ .init("-h", "--help", helpText: "Shows this help text") ] : []
         self.parent?.subcommands.append(self)
     }
     
@@ -253,23 +256,16 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         self.names = commands
         self.commandDescription = description
         self.parent = parent
-        self.options = [ .init("-h", "--help", helpText: "Shows this help text") ]
+        self.options = parent == nil ? [ .init("-h", "--help", helpText: "Shows this help text") ] : []
         self.parent?.subcommands.append(self)
     }
     
     /// Adds options to the commands parsing behaviour.
     public func add(_ options: Option...) {
         options.forEach { (option) in
+            assert(!self.availableOptions.contains(where: { $0.id == option.id }), "Option ID duplicate")
             self.options.append(option)
         }
-    }
-    
-    /// Sets the argument (can only be one) of the command.
-    @available(*, deprecated, message: "Use set(_,_) instead.")
-    public func set(_ argument: Argument) {
-        assert(self.subcommands.isEmpty)
-        self.argumentName = argument.id
-        self.argumentType = argument.type
     }
     
     /// Set the argument (can only be one) of the command.
@@ -279,12 +275,6 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         self.argumentType = argumentType
     }
     
-    /// Defines a general purpose callback function for the command.
-    @available(*, deprecated, renamed: "register")
-    public func exec(_ callback: @escaping ([String:Any]) -> Void) {
-        self.register(callback: callback)
-    }
-    
     // Defines a general purpose callback function for the command.
     public func register(callback: @escaping (Dictionary<String,Any>) -> Void) {
         self.callback = callback
@@ -292,30 +282,7 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     
     // MARK: - Argument evaluation
     
-    /// Deprecated
-    @available(*, deprecated, message: "Use evaluate(_) instead.")
-    public func evaluate(_ args: [String],_ callback: @escaping ([String:Any]) -> Void) throws {
-        let vars = try self.eval(args)
-        callback(vars)
-    }
-    
-    /// Deprecated
-    @available(*, deprecated, renamed: "eval")
-    public func evaluate(_ args: Array<String>,_ callback: @escaping (Dictionary<String, Any>, Error?) -> Void) {
-        self.eval(args, callback)
-    }
-    
-    /// Evaulates sime given argument and pipes the result into a specfic callback function.
-    public func eval(_ args: Array<String>,_ callback: @escaping (Dictionary<String, Any>, Error?) -> Void) {
-        do {
-            let vars = try self.eval(args)
-            callback(vars, nil)
-        } catch {
-            callback([:], error)
-        }
-    }
-    
-    /// Runs the parser for the current command using the 'CommandLine.arguments'.
+    /// Runs the parser using the programm arguments, piping the result into the general-purpose callback.
     @available(OSX 10.10, *)
     public func run() throws {
         var args = CommandLine.arguments
@@ -323,7 +290,7 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         try self.run(args)
     }
     
-    /// Evaluates some given arguments and pipes the result into the general purpose callback function.
+    /// Runs the parser using the provided arguments, piping the result into the general-purpose callback.
     public func run(_ args: Array<String>) throws {
         var vars = Dictionary<String,Any>()
         guard let result = try self.evaluate(arguments: args, using: &vars) else {
@@ -336,17 +303,21 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         }
     }
     
-    /// Deprecated
-    @available(*, deprecated, renamed: "run")
-    public func evaluate(_ args: Array<String>) throws {
-        try self.run(args)
-    }
-    
-    /// Evaluates some given arguments and pipes the result into a specific callback function(not general purpose).
+    /// Evaluates some given arguments and returns the parsed arguments.
     public func eval(_ args: Array<String>) throws -> Dictionary<String, Any>{
         var vars = Dictionary<String,Any>()
         try self.evaluate(arguments: args, using: &vars)
         return vars
+    }
+    
+    /// Evaulates some given argument and pipes the parsed argument into the callback.
+    public func eval(_ args: Array<String>,_ callback: @escaping (Dictionary<String, Any>, Error?) -> Void) {
+        do {
+            let vars = try self.eval(args)
+            callback(vars, nil)
+        } catch {
+            callback([:], error)
+        }
     }
     
     /// Evaluates some given arguments and returns the generated parameters or fails.
@@ -356,8 +327,8 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         // Stores the raw arguments in a mutable buffer
         var ctx = arguments
         
-        // Sets the default values of operations if not allready set (sould not be)
-        for option in options {
+        // Sets the default values of operations if not allready set (sould not be) (only locally added ones)
+        for option in self.options {
             if vars[option.id] == nil {
                 vars[option.id] = option.defaultValue
             }
@@ -366,7 +337,7 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         // Iterate through raw arguments to parse (dash-prefixed) options as long as possible
         while ctx.count != 0 && ctx.first!.hasPrefix("-") {
             // Find option with matching identifier (else invalid option)
-            let option = options.first { (op) -> Bool in
+            let option = self.availableOptions.first { (op) -> Bool in
                 return op.matches(ctx)
             }
             guard option != nil else {
@@ -390,14 +361,15 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         
         // Check if all required options were set
         // Must be done in first options round in case a subcommand is found
-        for option in options {
+        // Checks for parent's options are allready done
+        for option in self.options {
             if option.isRequired && !option.wasSet {
                 throw Errors.missingRequiredOption(option)
             }
         }
         
         // Test for subcommand names with current remaing context
-        for subcommand in subcommands {
+        for subcommand in self.subcommands {
             if subcommand.names.contains(ctx.first ?? "") {
                 ctx.removeFirst()
                 return try subcommand.evaluate(arguments: ctx, using: &vars)
@@ -411,7 +383,7 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         
         // Parse options after argument (else there sould be none) (as in first round)
         while ctx.count != 0 && ctx.first!.hasPrefix("-") {
-            let option = options.first { (op) -> Bool in
+            let option = self.availableOptions.first { (op) -> Bool in
                 return op.matches(ctx)
             }
             guard option != nil else {

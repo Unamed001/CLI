@@ -107,14 +107,8 @@ open class Option: CustomStringConvertible, CustomExportStringConvertible {
     // because those are static in the flag constructor.
     //
     
-    /// Legacy support general creation
-    @available(*, deprecated, message: "Use helpValue instead of default.")
-    public convenience init(_ id: String, _ identifiers: [String], _ argument: InputType?, isFlag: Bool, isRequired: Bool, `default`: Any, helpText: String) {
-        self.init(id, identifiers, argument, isFlag: isFlag, isRequired: isRequired, defaultValue: `default`, helpText: helpText)
-    }
-    
     /// Creates an option object according to the given parameters.
-    public init(_ id: String, _ identifiers: [String], _ argument: InputType?, isFlag: Bool, isRequired: Bool, defaultValue: Any, helpText: String) {
+    public init(_ id: String, _ identifiers: Array<String>, _ argument: InputType?, isFlag: Bool, isRequired: Bool, defaultValue: Any, helpText: String) {
         
         assert(isRequired ==> !isFlag)
         assert(isFlag ==> ((defaultValue as? Bool) == false))
@@ -127,13 +121,6 @@ open class Option: CustomStringConvertible, CustomExportStringConvertible {
         self.defaultValue = defaultValue
         self.helpText = helpText
         self.type = argument
-    }
-    
-    /// Legacy suppport flag creation
-    @available(*, deprecated, message: "Use init(_,_,helpText) instead.")
-    public convenience init(_ identifiers: Array<String>, helpText: String) {
-        assert(identifiers.count == 2)
-        self.init(identifiers.first!, identifiers.last!, helpText: helpText)
     }
     
     /// Creates a flag option using the the long id (prefix-less) as unique id.
