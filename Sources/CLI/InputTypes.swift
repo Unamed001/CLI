@@ -110,7 +110,7 @@ public class InputType: CustomStringConvertible, CustomExportStringConvertible{
         }, inputType.externalDescriptor + "?")
     }
     
-    /// Input type that accepts mutiple inputs of the same type
+    /// Input type that accepts mutiple inputs of the same type.
     public static func sequence(_ inputType: InputType) -> InputType {
         return InputType({ args -> Any in
             var values = Array<Any>()
@@ -125,6 +125,19 @@ public class InputType: CustomStringConvertible, CustomExportStringConvertible{
             }
             return values
         }, inputType.externalDescriptor + "...")
+    }
+    
+    /// Input type that accepts a tupel of inputs.
+    public static func multipart(_ inputTypes: Array<InputType>) -> InputType {
+        assert(!inputTypes.isEmpty)
+        return InputType({ args -> Array<Any> in
+            var values = Array<Any>()
+            // Iteratre through all expected values
+            for type in inputTypes {
+                values.append(try type.parser(&args))
+            }
+            return values
+        }, "\(inputTypes.map { $0.exportDescription }.joined(separator: ", "))")
     }
     
     //

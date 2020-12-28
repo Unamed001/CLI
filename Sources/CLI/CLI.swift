@@ -178,8 +178,14 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         self.subcommands.forEach { (command) in
             str.append(" + Command<\(command.names.joined(separator: " | "))>")
         }
+        
         // Collect all options for descriptiom
-        self.availableOptions.forEach { (option) in
+        self.parent?.availableOptions.forEach { (option) in
+            str.append(" - (inherited) \(option.description)")
+        }
+        
+        // Collect all options for descriptiom
+        self.options.forEach { (option) in
             str.append(" - \(option.description)")
         }
         
