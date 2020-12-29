@@ -20,10 +20,12 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     
     /// CLI parsing erros that can be handeled by the user.
     public enum Errors: Error {
-        case unknownOption(String, [String])
+        case unknownOption(String, Array<String>)
         case missingRequiredOption(Option)
+        case unexpectedRemainingToken(Array<String>)
         case optionParsingError(Option, Error)
         case argumentParsingError(Error)
+        
     }
     
     //
@@ -36,7 +38,7 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     /// Handles errors emitted from command line parsing
     public func handleError(_ error: Error) {
         // Define common prefix
-        let prefix = self.completeName + ": " + "Error".formated(.bold, .red)
+        let prefix = "Error(\(self.completeName))".formated(.bold, .red)
         
         if let error = error as? Command.Errors {
             switch error {
@@ -48,7 +50,11 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
                 
             // Catch errors on unkown options detecttion
             case .unknownOption(let opt, let rem):
-                print(prefix + " Unkown option token '\(opt)' in (\(rem.joined(separator: " ")))")
+                print(prefix + " Unkown option token '\(opt)' in '\(rem.joined(separator: " "))'")
+                break
+                
+            case .unexpectedRemainingToken(let rem):
+                print(prefix + " Unexpected remaining token '\(rem.joined(separator: " "))'")
                 break
                 
             // Catch errors thrown in the option parsing phase
@@ -118,7 +124,7 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     /// A link to the parent command (if existent).
     private var parent: Command?
     
-    /// A list of callnames for the given command.
+    /// A list of callnames for the given command (Index 0 is main name).
     public private(set) var names: Array<String>
     
     /// A short description of the commands effects.
@@ -136,9 +142,10 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     // - Calls have neither subcommands, nor arguments
     //
     
-    /// A collection of all possible (dash-prefixed) command line options.
+    /// A collection of all options specific for this command.
     private var options: Array<Option>
     
+    /// A collection of all avaiable options, including inherited ones.
     private var availableOptions: Array<Option> {
         return (self.parent?.availableOptions ?? []) + self.options
     }
@@ -222,7 +229,7 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         
         var argumentStr = ""
         if let argumentName = self.argumentName, let argumentType = self.argumentType {
-            argumentStr = "<\(argumentName): \(argumentType.exportDescription)>"
+            argumentStr = "\(argumentName): \(argumentType.exportDescription)".formated(.underline, .noColor)
         }
         
         return "\(self.completeName) [-\(optionsShort)] \(subcommandsShort)\(argumentStr)"
@@ -333,7 +340,8 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
         // Stores the raw arguments in a mutable buffer
         var ctx = arguments
         
-        // Sets the default values of operations if not allready set (sould not be) (only locally added ones)
+        // Sets the default values of operations if not allready set
+        // Only set the local options not the inherited ones
         for option in self.options {
             if vars[option.id] == nil {
                 vars[option.id] = option.defaultValue
@@ -403,6 +411,11 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
             } catch {
                 throw Errors.optionParsingError(option!, error)
             }
+        }
+        
+        // Ensure that all options were parsed
+        guard ctx.count == 0 else {
+            throw Errors.unexpectedRemainingToken(ctx)
         }
         
         return self

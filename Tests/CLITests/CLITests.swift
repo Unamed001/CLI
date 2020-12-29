@@ -15,7 +15,7 @@ final class CLITests: XCTestCase {
         command.set("files", InputType.sequence(InputType.path))
         
         XCTAssertEqual(command.completeName, "test")
-        XCTAssertEqual(command.synopsis, "test [-hvuc] <files: path...>")
+        XCTAssertEqual(command.synopsis, "test [-hvuc] files: path...")
         XCTAssertEqual(command.names, [ "test", "test-command" ])
         
         command.eval([ "-c", "./.cache", "--verbose" ]) { (args, error) in
@@ -54,7 +54,7 @@ final class CLITests: XCTestCase {
         )
         
         XCTAssertEqual(parent.synopsis, "parent [-hp] [child1 child2]")
-        XCTAssertEqual(child1.synopsis, "parent child1 [-hpc1] <files: path...>")
+        XCTAssertEqual(child1.synopsis, "parent child1 [-hpc1] files: path...")
         XCTAssertEqual(child2.synopsis, "parent child2 [-hpc] ")
         
         parent.eval([ "--parent", "child1", "-c1" ]) { (args, error) in

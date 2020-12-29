@@ -82,7 +82,7 @@ public func isTerminal() -> Bool {
 }
 
 /// A handler to inject shell commands into a bash process.
-@available(OSX 10.14, *)
+@available(OSX 10.10, *)
 @discardableResult
 public func shell(_ command: String...) -> String {
     let task = Process()
