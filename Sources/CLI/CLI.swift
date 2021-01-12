@@ -11,12 +11,12 @@ open class Command: CustomStringConvertible, CustomExportStringConvertible {
     
     // MARK: - External Error Handling
     
-    //
-    // == External errors ==
-    //
-    // External errros are errors that may need a special handeling to
-    // e.g. correct small spelling mistakes or to provied a dynamic help message.
-    //
+    ///
+    /// == External errors ==
+    ///
+    /// External errros are errors that may need a special handeling to
+    /// e.g. correct small spelling mistakes or to provied a dynamic help message.
+    ///
     
     /// CLI parsing erros that can be handeled by the user.
     public enum Errors: Error {
