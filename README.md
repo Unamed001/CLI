@@ -6,7 +6,7 @@ This swift package contains a CL argument parser with a modern [Swift](https://s
 
 ### Using Git
 ```bash
-git clone https://github.com/Unamed001/CLI && cd CLI
+git clone https://github.com/PetrichorIT/CLI && cd CLI
 swift build
 ```
 
@@ -27,7 +27,7 @@ dependencies: [
 ...
 dependencies: [
   ...
-  .package(url: "https://github.com/Unamed001/CLI", from: Version(0,9,0))
+  .package(url: "https://github.com/PetrichorIT/CLI", from: Version(0,9,0))
 ]
 ...
 ```
@@ -95,7 +95,7 @@ command.evaluate(args) { args, error in
 
 CLI is available under the MIT license.
 
-Copyright 2020 Petrichor(https://github.com/Unamed001)
+Copyright 2020 Petrichor(https://github.com/PetrichorIT)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
